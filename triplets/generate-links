@@ -1,0 +1,45 @@
+for model1 in models_list:
+
+    sfm_data1 = sfm_info(model1)
+
+    for file1_2, model2 in connections(model1):
+
+        filename = '_to_'.join(sorted([model1.split('-')[-1],model2]))
+
+        if filename not in links_list: # si la connection n'a pas encore été traitée
+            links_list.append(filename)
+            img_list = []
+
+            if len([x for x in models_list if model2 in x]) > 0: # si les photos ont bien été prises pour cet endroit
+                model2_name = [x for x in models_list if model2 in x][0]
+                sfm_data2 = sfm_info(model2_name)
+                coor1_2 = [x for x in sfm_data1[sfm_data1['filename'] == file1_2]['coor']][0]
+                filenames1_2 = sfm_data1.iloc[nearest_poses(coor1_2, sfm_data1, 20)]['filename']
+
+                file2_1 = [x[0] for x in connections(model2_name) if model1.split('-')[-1] in x][0]
+                coor2_1 = [x for x in sfm_data2[sfm_data2['filename'] == file2_1]['coor']][0]
+                filenames2_1 = sfm_data2.iloc[nearest_poses(coor2_1, sfm_data2, 20)]['filename']
+	
+                with open(("/run/shm/%s%s.txt" % (filename, SFM_MODEL)), 'w') as f:
+
+                    for f1 in filenames1_2:
+                        f.write("%s\n" % f1)
+                        img_list.append(f1)
+
+                    for f2 in filenames2_1:
+                        f.write("%s\n" % f2)
+                        img_list.append(f2)
+
+                    for f1 in filenames1_2:
+                        for f2 in filenames2_1:
+                            matches.append(sorted([file_to_idx_dict.get(f1), file_to_idx_dict.get(f2)]))
+                f.close()
+
+with open(("/run/shm/%s/matches-pair.txt" % SFM_MODEL), 'w') as f_matches:
+	for match in matches:
+		for i,j in match:
+			f_matches.write("%d %d\n" %(i,j))
+f_matches.close() 
+
+
+

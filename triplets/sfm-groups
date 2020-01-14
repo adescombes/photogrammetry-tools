@@ -1,0 +1,332 @@
+#!/bin/bash
+
+#  sfm-suite
+#
+#      Nils Hamel - nils.hamel@bluewin.ch
+#      Copyright (c) 2016-2019 DHLAB, EPFL
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    SFM_PIPEV="20160511"
+
+#
+#   script - script variables
+#
+
+    SFM_TMPDR="/tmp/sfm-$(echo $0-$SFM_PIPEV | sha256sum | cut -c-16)"
+    SFM_CMDBK="$0 $@"
+    SFM_MOUNT="/media/gargantua/1000-plane/0000-sfm"
+    SFM_MODEL="$(date +"%Y%m%d-%H%M%S")"
+    SFM_COORD="$(grep -c ^processor /proc/cpuinfo)"
+#    SFM_IMAGE=""
+    SFM_SCALE=""
+    SFM_CHAIN="incremental"
+    SFM_FOCAL=""
+    SFM_RADIA="3"
+    SFM_DENSE="omvs"
+    SFM_DENSP="standard"
+    SFM_RESOL="0"
+    SFM_POINT="SIFT"
+    SFM_FORCE="NORMAL"
+    SFM_MATCH="f"
+    SFM_PFILE=""
+    SFM_PAIRS=""
+	SFM_GROUPS="" # txt file with list of individual parts that will be merged
+    SFM_DEPTH="20"
+    SFM_CYCLE="1"
+    SFM_ACCEP="tiff tif jpg jpeg png bmp"
+    SFM_MESHE=""
+
+#
+#   script - arguments and parameters
+#
+
+    function arg() {
+
+        # parsing argument and parameters #
+        while [[ $# > 0 ]]; do
+
+            # read argument #
+            sfm_arg="$1"; shift
+
+            # switch on arguments #
+            case $sfm_arg in
+
+                --mount|-m)
+                    SFM_MOUNT="$1"
+                shift ;;
+                --suffix|-s)
+                    SFM_MODEL="$SFM_MODEL-${1,,}"
+                shift ;;
+                --thread|-t)
+                    SFM_COORD="$1"
+                shift ;;
+#                --image)
+#                    SFM_IMAGE="$1"
+#                shift ;;
+                --scale)
+                    SFM_SCALE="$1"
+                shift ;;
+                --optimisation-pipeline|--opipe)
+                    SFM_CHAIN="$1"
+                shift ;;
+                --initialise-focal|--focal)
+                    SFM_FOCAL="$1"
+                shift ;;
+                --initialise-radial)
+                    SFM_RADIA="$1"
+                shift ;;
+                --densify-pipeline|--dpipe)
+                    SFM_DENSE="$1"
+                shift ;;
+                --densify-preset)
+                    SFM_DENSP="$1"
+                shift ;;
+                --densify-scale)
+                    SFM_RESOL="$1"
+                shift;;
+                --features-mode)
+                    SFM_POINT="$1"
+                shift ;;
+                --features-preset)
+                    SFM_FORCE="$1"
+                shift ;;
+                --matches-mode)
+                    SFM_MATCH="$1"
+                shift ;;
+                --pairs-file)
+                    SFM_PFILE="$1"
+                shift ;;
+                --pairs-mode)
+                    SFM_PAIRS="$1"
+                shift ;;
+				--groups)
+					SFM_GROUPS="$1"
+				shift ;;
+                --pairs-depth)
+                    SFM_DEPTH="$1"
+                shift ;;
+                --pairs-cycle)
+                    SFM_CYCLE="$1"
+                shift ;;
+                --mesh-pipeline)
+                    SFM_MESHE="$1"
+                shift;;
+
+            esac
+
+        done
+
+    }
+
+#
+#   script - execution
+#
+
+    function exe() {
+
+        # check log consistency #
+        if [ -z $SFM_LOGS ]; then
+
+            # execute command and abort on error #
+            eval $1 1>&2 || exit 1
+
+        else
+
+            # execute command and abort on error #
+            eval $1 >> $SFM_LOGS 2>&1 || exit 1
+
+        fi
+
+    }
+
+#
+#   script - verification
+#
+
+    function chk() {
+
+        # check consistency - abort execution #
+        [ -f $SFM_ROOT/$SFM_NAME/systems/pipe-$SFM_PIPEV ] || { msg "error : pipeline"; exit 1; }
+
+    }
+
+#
+#   script - messages
+#
+
+    function log() {
+
+        # log message #
+        [ -d $(dirname $SFM_LOGS) ] && echo "[$(date +"%y%m%d:%H%M%S")][$SFM_COORD] sfm $SFM_PIPEV : $1" >> $SFM_LOGS
+
+    }
+
+    function msg() {
+
+        # display message #
+        >&2 echo "$1"
+
+    }
+
+#
+#   script - temporary
+#
+
+    function tmp() {
+
+        # check mode - create/delete temporary storage #
+        if [ "$1" == "create" ]; then mkdir -p $SFM_TMPDR; else rmdir $SFM_TMPDR; fi
+
+    }
+
+#
+#   script - source elements injection
+#
+
+    function image() {
+        # check scale parameter #
+        if [ -n "$SFM_SCALE" ]; then
+
+            # check focal parameter #
+            if [ -n "$SFM_FOCAL" ]; then
+
+                # correct focal value #
+                SFM_FOCAL=$(echo "scale=3; $SFM_FOCAL * ( $SFM_SCALE / 100.0 )" | bc)
+
+                # update focal parameter #
+                SFM_FOCAL="--initialise-focal $SFM_FOCAL"
+
+            fi
+
+            # update scale parameter #
+            SFM_SCALE="-scale $SFM_SCALE%"
+
+        else
+            # check focal parameter #
+            if [ -n "$SFM_FOCAL" ]; then
+
+                # update focal parameter #
+                SFM_FOCAL="--initialise-focal $SFM_FOCAL"
+
+            fi
+
+        fi
+
+        # create temporary directory #
+        tmp create
+
+        # enumerating source directories #
+
+		while read -r file
+		do 	
+		    for SFM_ELEMENT in $SFM_MOUNT/${file:0:4}/${file:4:4}/$file/images/*; do
+
+		        # element analysis #
+		        SFM_BASE=$(basename $SFM_ELEMENT)
+
+		        # image format filtering #
+		        if [ -n "$(echo $SFM_ACCEP | grep -i ${SFM_BASE##*.})" ]; then
+
+		            # copy to temporary directory - tiff i/o extremely slow over nfs #
+		            exe "rsync -L $SFM_ELEMENT $SFM_TMPDR/$SFM_BASE"
+
+		            # convert element to tiff #
+		            #exe "convert $SFM_TMPDR/$SFM_BASE +compress $SFM_SCALE $SFM_TMPDR/${SFM_BASE%.*}.tif"
+					exe "convert -thumbnail 100x100! $SFM_TMPDR/$SFM_BASE +compress $SFM_SCALE $SFM_TMPDR/${SFM_BASE%.*}.tif"
+
+		            # copy to image directory - tiff i/o extremely slow over nfs #
+		            exe "rsync $SFM_TMPDR/${SFM_BASE%.*}.tif $SFM_ROOT/$SFM_MODEL/images/"
+
+		            # remove from temporary directoy #
+		            exe "rm -f $SFM_TMPDR/${SFM_BASE%.*}.tif $SFM_TMPDR/$SFM_BASE"
+
+		            # log message #
+		            log "injecting $SFM_BASE source element"
+
+		        else
+
+		            # log message #
+		            log "rejecting $SFM_BASE source element"
+
+		        fi
+
+		    done
+		done < $SFM_GROUPS
+
+        # delete temporary directory #
+        tmp delete
+
+    }
+
+#
+#   script - main
+#
+
+    # argument and parameters #
+    arg $@
+
+
+    # compose standard variables #
+    SFM_NAME=$SFM_MODEL
+
+    SFM_ROOT=$SFM_MOUNT/${SFM_NAME:0:4}/${SFM_NAME:4:4}
+
+    # creating structure #
+    exe "sfm-create --mount $SFM_MOUNT --sfm $SFM_MODEL"
+
+    # initialise logs #
+    SFM_LOGS=$SFM_ROOT/$SFM_NAME/systems/pipe-$SFM_PIPEV-logs
+
+    # image injection #
+    image
+#	exe "mkdir $SFM_ROOT/$SFM_NAME/images; cp /media/gargantua/1000-plane/0000-sfm/2020/0106/20200106-122254-20200106-00001-italy-venice-san_barnaba-0001-test3/images/* $SFM_ROOT/$SFM_NAME/images/"
+
+    # initialise structure #
+    exe "sfm-initialise --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD $SFM_FOCAL --initialise-radial $SFM_RADIA"
+
+    # check putative model - compute putative matches #
+    [ "$SFM_PAIRS" != "" ] && exe "sfm-tool-pairs --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --pairs-mode $SFM_PAIRS --pairs-depth $SFM_DEPTH --pairs-cycle $SFM_CYCLE"
+
+    # check putative file - import putative matches #
+    [ "$SFM_PFILE" != "" ] && exe "cp $SFM_PFILE $SFM_ROOT/$SFM_NAME/systems/omvg/pair_list.txt"
+
+    # compute features #
+    exe "sfm-features --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --features-mode $SFM_POINT --features-preset $SFM_FORCE"
+
+    # check pair file #
+#    [ -n "$SFM_PFILE" ] && SFM_PFILE="--matches-pair $SFM_PFILE"
+    SFM_PFILE="$SFM_ROOT/$SFM_NAME/systems/matches-pair.txt" # là je donne juste le nom (et endroit) où il faut créer le fichier de matches
+	python /home/descombe/Desktop/photogrammetry-tools/triplets/triplets-dev.py $SFM_NAME $SFM_MOUNT $SFM_GROUPS $SFM_PFILE # il est en input au script python mais c'est juste pour indiquer l'endroit où remplir les matches
+
+    exe touch $SFM_ROOT/$SFM_NAME/systems/omvg/matches/brigitte.txt
+	# compute matches #
+    exe "sfm-matches --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --matches-mode $SFM_MATCH --matches-pair $SFM_PFILE" # et là je l'utilise effectivement
+
+    # bundle adjustment #
+    exe "sfm-optimisation --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --optimisation-pipeline $SFM_CHAIN"
+
+    # densification #
+    exe "sfm-densify --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --densify-pipeline $SFM_DENSE --densify-preset $SFM_DENSP --densify-scale $SFM_RESOL"
+
+    # meshing #
+    exe "sfm-mesh --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --mesh-pipeline $SFM_MESHE"
+
+    # export command #
+    log "command=($SFM_CMDBK)"
+
+
+    # send message #
+    exit 0
+
