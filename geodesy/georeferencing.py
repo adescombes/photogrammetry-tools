@@ -10,6 +10,8 @@ import numpy as np
 import json
 import sys
 import struct
+
+sys.path.append('../share')
 from least_squares_matching import least_squares_matching
 
 file_in = sys.argv[1] # full path to .uv3 file

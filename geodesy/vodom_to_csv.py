@@ -11,6 +11,8 @@ import json
 import pandas as pd
 import numpy as np
 import sys
+
+sys.path.append('../share')
 from least_squares_matching import least_squares_matching
 
 model = sys.argv[1] 
