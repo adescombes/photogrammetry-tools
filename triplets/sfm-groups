@@ -27,9 +27,10 @@
     SFM_TMPDR="/tmp/sfm-$(echo $0-$SFM_PIPEV | sha256sum | cut -c-16)"
     SFM_CMDBK="$0 $@"
     SFM_MOUNT="/media/gargantua/1000-plane/0000-sfm"
+    SFM_LISTING="/media/gargantua/0500-plane/0000-image"
     SFM_MODEL="$(date +"%Y%m%d-%H%M%S")"
     SFM_COORD="$(grep -c ^processor /proc/cpuinfo)"
-#    SFM_IMAGE=""
+  #  SFM_IMAGE=""
     SFM_SCALE=""
     SFM_CHAIN="incremental"
     SFM_FOCAL=""
@@ -40,7 +41,7 @@
     SFM_POINT="SIFT"
     SFM_FORCE="NORMAL"
     SFM_MATCH="f"
-    SFM_PFILE=""
+    SFM_PFILE="$SFM_MOUNT/${SFM_MODEL:0:4}/${SFM_MODEL:4:4}/$SFM_MODEL/systems/matches-pair.txt"
     SFM_PAIRS=""
 	SFM_GROUPS="" # txt file with list of individual parts that will be merged
     SFM_DEPTH="20"
@@ -72,9 +73,9 @@
                 --thread|-t)
                     SFM_COORD="$1"
                 shift ;;
-#                --image)
-#                    SFM_IMAGE="$1"
-#                shift ;;
+    #            --image)
+    #                SFM_IMAGE="$1"
+    #            shift ;;
                 --scale)
                     SFM_SCALE="$1"
                 shift ;;
@@ -228,10 +229,24 @@
         tmp create
 
         # enumerating source directories #
-
-		while read -r file
+      
+		while read -r line
 		do 	
-		    for SFM_ELEMENT in $SFM_MOUNT/${file:0:4}/${file:4:4}/$file/images/*; do
+            num=$(echo $line | awk -F- '{print NF-1}') # number of occurences of "-" in the folder's name
+            
+            # if there are 8 occurences, take only the part after the 2 first occurences of "-"            
+            if [ $num -eq 8 ]; then
+
+                images_folder=$SFM_LISTING/${line:16:4}/${line:20:4}/${line:16}
+            
+            elif [ $num -eq 6 ]; then
+
+                images_folder=$SFM_LISTING/${line:0:4}/${line:4:4}/$line
+            else
+                exit 1
+            fi
+
+		    for SFM_ELEMENT in $images_folder/*; do
 
 		        # element analysis #
 		        SFM_BASE=$(basename $SFM_ELEMENT)
@@ -243,8 +258,8 @@
 		            exe "rsync -L $SFM_ELEMENT $SFM_TMPDR/$SFM_BASE"
 
 		            # convert element to tiff #
-		            #exe "convert $SFM_TMPDR/$SFM_BASE +compress $SFM_SCALE $SFM_TMPDR/${SFM_BASE%.*}.tif"
-					exe "convert -thumbnail 100x100! $SFM_TMPDR/$SFM_BASE +compress $SFM_SCALE $SFM_TMPDR/${SFM_BASE%.*}.tif"
+		            exe "convert $SFM_TMPDR/$SFM_BASE +compress $SFM_SCALE $SFM_TMPDR/${SFM_BASE%.*}.tif"
+					#exe "convert -thumbnail 100x100! $SFM_TMPDR/$SFM_BASE +compress $SFM_SCALE $SFM_TMPDR/${SFM_BASE%.*}.tif"
 
 		            # copy to image directory - tiff i/o extremely slow over nfs #
 		            exe "rsync $SFM_TMPDR/${SFM_BASE%.*}.tif $SFM_ROOT/$SFM_MODEL/images/"
@@ -285,34 +300,32 @@
 
     # creating structure #
     exe "sfm-create --mount $SFM_MOUNT --sfm $SFM_MODEL"
-
     # initialise logs #
     SFM_LOGS=$SFM_ROOT/$SFM_NAME/systems/pipe-$SFM_PIPEV-logs
 
     # image injection #
     image
-#	exe "mkdir $SFM_ROOT/$SFM_NAME/images; cp /media/gargantua/1000-plane/0000-sfm/2020/0106/20200106-122254-20200106-00001-italy-venice-san_barnaba-0001-test3/images/* $SFM_ROOT/$SFM_NAME/images/"
 
     # initialise structure #
     exe "sfm-initialise --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD $SFM_FOCAL --initialise-radial $SFM_RADIA"
 
-    # check putative model - compute putative matches #
-    [ "$SFM_PAIRS" != "" ] && exe "sfm-tool-pairs --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --pairs-mode $SFM_PAIRS --pairs-depth $SFM_DEPTH --pairs-cycle $SFM_CYCLE"
+    # create a sub-directory to store all the files needed temporarily
+    exe "mkdir $SFM_ROOT/$SFM_NAME/systems/groups"
 
-    # check putative file - import putative matches #
+    # copy the file containing information on the groups 
+    exe "cp $SFM_GROUPS $SFM_ROOT/$SFM_NAME/systems/groups/groups.txt"
+
+    # create pair file #
+    python make-triplets-v2.py $SFM_MOUNT $SFM_LISTING $SFM_MODEL $SFM_GROUPS $SFM_PFILE 
+  
+    # import putative matches - move the created pair file to the right location #
     [ "$SFM_PFILE" != "" ] && exe "cp $SFM_PFILE $SFM_ROOT/$SFM_NAME/systems/omvg/pair_list.txt"
 
     # compute features #
     exe "sfm-features --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --features-mode $SFM_POINT --features-preset $SFM_FORCE"
 
-    # check pair file #
-#    [ -n "$SFM_PFILE" ] && SFM_PFILE="--matches-pair $SFM_PFILE"
-    SFM_PFILE="$SFM_ROOT/$SFM_NAME/systems/matches-pair.txt" # là je donne juste le nom (et endroit) où il faut créer le fichier de matches
-	python /home/descombe/Desktop/photogrammetry-tools/triplets/triplets-dev.py $SFM_NAME $SFM_MOUNT $SFM_GROUPS $SFM_PFILE # il est en input au script python mais c'est juste pour indiquer l'endroit où remplir les matches
-
-    exe touch $SFM_ROOT/$SFM_NAME/systems/omvg/matches/brigitte.txt
 	# compute matches #
-    exe "sfm-matches --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --matches-mode $SFM_MATCH --matches-pair $SFM_PFILE" # et là je l'utilise effectivement
+    exe "sfm-matches --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --matches-mode $SFM_MATCH --matches-pair $SFM_ROOT/$SFM_NAME/systems/omvg/pair_list.txt" 
 
     # bundle adjustment #
     exe "sfm-optimisation --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --optimisation-pipeline $SFM_CHAIN"

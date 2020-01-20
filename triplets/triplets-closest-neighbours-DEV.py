@@ -17,10 +17,6 @@ SFM_PFILE = sys.argv[4]
 model = '20191010-105434-20191010-00002-italy-venice-san_barnaba-0002-calle_lunga_de_san_barnaba'
 sfm_data_path = SFM_MOUNT + "/" + model[0:4] + "/" + model[4:8] + "/" + model + "/systems/omvg/sfm_data.json"
 
-with open('/home/descombe/Desktop/test.txt', 'w') as f:
-	f.write("%s" % sfm_data_path)
-	f.close()
-
 def sfm_info(model): # takes either a model or a full path to the json file as input
     sfm_data_path = SFM_MOUNT + "/" + model[0:4] + "/" + model[4:8] + "/" + model + "/systems/omvg/sfm_data.json"
     if not os.path.exists(sfm_data_path):
@@ -36,7 +32,7 @@ def sfm_info(model): # takes either a model or a full path to the json file as i
 
     for view in views:
         views_keys.append(view['key'])
-        files.append(view['value']['ptr_wrapper']['data']['filename'].replace('.tif',''))
+        files.append(view['value']['ptr_wrapper']['data']['filename'].split('.')[0])
 
     key_to_file_dict = dict(zip(views_keys,files))
 
@@ -53,7 +49,7 @@ def connections(model):
     models_0500 = glob('/media/gargantua/0500-plane/0000-image/*/*/*.txt')
     path = [x for x in models_0500 if model.split('-')[-1] in x]
     connections = []
-    for connection in open(path[0], 'r').read().split('\n'):
+    for connection in open(path[0], 'r').read().split('\n'): # WEAKNESS HERE : only keeps one folder
         if connection is not '':
             connections.append(connection.split())
     return connections
@@ -126,22 +122,10 @@ for model1 in models_list:
                 file2_1 = [x[0] for x in connections(model2_name) if model1.split('-')[-1] in x][0]
                 coor2_1 = [x for x in sfm_data2[sfm_data2['filename'] == file2_1]['coor']][0]
                 filenames2_1 = sfm_data2.iloc[nearest_poses(coor2_1, sfm_data2, 20)]['filename']
-	
-                """with open((SFM_MOUNT + "/"+ SFM_MODEL[0:4] + "/" + SFM_MODEL[4:8] + "/" + SFM_MODEL + "/systems/%s.txt" % filename), 'w') as f:
 
-                    for f1 in filenames1_2:
-                        f.write("%s\n" % f1)
-                        img_list.append(f1)
-
-                    for f2 in filenames2_1:
-                        f.write("%s\n" % f2)
-                        img_list.append(f2)
-
-                    
-                f.close()"""
                 for f1 in filenames1_2:
-                        for f2 in filenames2_1:
-                            matches.append(sorted([file_to_idx_dict.get(f1), file_to_idx_dict.get(f2)]))
+                    for f2 in filenames2_1:
+                        matches.append(sorted([file_to_idx_dict.get(f1), file_to_idx_dict.get(f2)]))
 
 with open(SFM_PFILE, 'w') as f_matches:
 	for match in matches:
