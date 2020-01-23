@@ -1,8 +1,10 @@
-import sys
+# original python code found at https://www.geeksforgeeks.org/hierholzers-algorithm-directed-graph/
+
 import numpy as np
 import random
 import pandas as pd
 
+# each edge is represented by = [vertex_1, vertex_2, (0:one-way, 1:two-way street)]
 sion = [
     [1,2,1],[1,3,1],[1,6,1],[2,3,1],[2,4,1],[3,6,1],[3,9,1],[6,9,1],[3,5,1],
    [4,5,1],[6,7,1],[7,9,1],[7,10,1],[10,3,1],[5,10,1],[11,10,0],[11,5,0],
@@ -169,12 +171,13 @@ if __name__ == "__main__":
                     
             
     directions = printCircuit(adj_sion)
-    print()
+    print() # print solution in terms of labels of vertices
   
 
-coors = pd.read_csv(sys.argv[1])
+# xy coordinates of the vertices in EPSG:4326 are stored in the following csv file
+coors = pd.read_csv('scan_nodes_XY.csv')
 
-
+# export the list of coordinates -> copy-paste in a web mapping service such as Google Maps or Bing Maps
 with open('directions.txt','w') as f:
     for stop in directions:
         f.write('%f, %f\n' % (coors[coors['id'] == stop]['Y'], coors[coors['id'] == stop]['X']))
