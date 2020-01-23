@@ -5,6 +5,6 @@ As in the case of Sion the city cannot always be represented by an eulerian path
 It is modified to introduce directions in the graph (to represent one-way roads), randomization in the choice of vertices (to propose different solutions with similar costs) and a cost function (the weight of an edge increases when it is visited). 
 
 The data used is based on the following representation of Sion, divided into 4 zones.
-![sion-map](https://github.com/adescombes/photogrammetry-tools/tree/master/route-planning/sion-map.png "directed Sion postman")
+![sion-map](sion-map.png)
 
 The *Hierholzer.py* code gives a list of labeled vertices as output, corresponding to the path to follow between crossroads of Sion.The xy coordinates of these crossroads in the EPSG:4326 referential are stored in *scan_nodes_XY.csv*. The list of GPS coordinates to follow is then stored in *directions.txt* and can be used with any web mapping service. 
