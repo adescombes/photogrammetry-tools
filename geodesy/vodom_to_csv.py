@@ -15,10 +15,9 @@ import sys
 sys.path.append('../share')
 from least_squares_matching import least_squares_matching
 
-model = sys.argv[1] 
+path = sys.argv[1] 
 epsg = sys.argv[2]
-version = model.split('/')[-2]
-path = '/'.join(model.split('/')[:-1]) 
+version = path.split('/')[-1]
 coor_model_file = path + "/geodesy/points_model"
 coor_cadastre_file = path + "/geodesy/points_cadastre_epsg"+epsg
 

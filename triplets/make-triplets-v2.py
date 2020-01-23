@@ -8,26 +8,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 
-"""SFM_MOUNT = '/media/gargantua/1000-plane/0000-sfm'
-SFM_LISTING = '/media/gargantua/0500-plane/0000-image'
-SFM_MODEL ='/home/descombe/20200120-00001-italy-venice-santa_margherita-0001-santa_margherita'
-SFM_GROUPS = SFM_MODEL + '/parts.txt'
-
-SFM_MOUNT /media/gargantua/1000-plane/0000-sfm
-SFM_LISTING /media/gargantua/0500-plane/0000-image
-SFM_MODEL 20200120-162758-20200120-00001-italy-venice-santa_margherita-0001-santa_margherita
-SFM_GROUPS ./20200120-00001-italy-venice-santa_margherita-0002-santa_margherita/parts.txt
-SFM_PFILE /media/gargantua/1000-plane/0000-sfm/2020/0120/20200120-162758-20200120-00001-italy-venice-santa_margherita-0001-santa_margherita/systems/matches-pair.txt
-
-"""
-
 SFM_MOUNT = sys.argv[1]
 SFM_LISTING =  sys.argv[2]
 SFM_MODEL = sys.argv[3]
 SFM_GROUPS = sys.argv[4]
 SFM_PFILE = sys.argv[5]
 
-with open("/home/descombe/Desktop/photogrammetry-tools/triplets/test.txt","w") as f1:
+with open("/home/descombe/triplets/test.txt","w") as f1:
     f1.write("SFM_MOUNT " + SFM_MOUNT)
     f1.write("\nSFM_LISTING " + SFM_LISTING)
     f1.write("\nSFM_MODEL " + SFM_MODEL)
@@ -93,7 +80,13 @@ for model in open(SFM_GROUPS, 'r').read().split('\n'):
 
 
 # to update the connections in 0500-plane, we list all the connections of each model and copy it in a text file 
-# for the newly created one, which encompasses them all
+# for the newly created one, which encompasses them all. But first, check if the destination already exists
+
+if not os.path.exists(SFM_LISTING + "/" + SFM_MODEL[16:20]):
+    os.system("mkdir %s/%s" % (SFM_LISTING, SFM_MODEL[16:20]))
+if not os.path.exists(SFM_LISTING + "/" + SFM_MODEL[16:20] + "/" + SFM_MODEL[20:24]):
+    os.system("mkdir %s/%s/%s" % (SFM_LISTING, SFM_MODEL[16:20], SFM_MODEL[20:24]))
+    
 with open(SFM_LISTING + "/" + SFM_MODEL[16:20] + "/" + SFM_MODEL[20:24] + "/" + SFM_MODEL[16:] + ".txt", 'w') as f:
 
     for model, properties in dict_properties.items():
@@ -120,16 +113,16 @@ f.close()
 
 
 path_listing_in = SFM_LISTING + "/" + SFM_MODEL[16:20] + "/" + SFM_MODEL[20:24] + "/" + SFM_MODEL[16:]
-path_listing_out =  SFM_MOUNT + "/" + SFM_MODEL[0:4] + "/" + SFM_MODEL[4:8] + "/" + SFM_MODEL + "/systems/groups"
+path_listing_out =  SFM_MOUNT + "/" + SFM_MODEL[0:4] + "/" + SFM_MODEL[4:8] + "/" + SFM_MODEL + "/systems"
 
 # create a sfm_data.json file for the bigger model and store it in the temporary folder.
 # A folder has to be already present in the 0500-plane folder, and contain all the separate parts listed in the parts.txt file
-os.system("openMVG_main_SfMInit_ImageListing -i %s -o %s" % (path_listing_in, path_listing_out))
+#os.system("openMVG_main_SfMInit_ImageListing -i %s -o %s" % (path_listing_in, path_listing_out))
 
 
 
 # create a dict of correspondances between names of the images and their index, based on the sfm_data.json of the bigger (general) model:
-with open(path_listing_out + "/sfm_data.json") as json_data:
+with open(path_listing_out + "/omvg/sfm_data.json") as json_data:
     data = json.load(json_data)
     
 general_json = data['views']
@@ -177,7 +170,7 @@ for model, properties in dict_properties.items():
     # udpate the dict by adding the listing of images of the current model
     dict_files_per_model.update({model : filenames})
     
-    if '1000-plane' in properties[0]: # if the model has already been computed, get the matches from its geometric matches
+    if 'groups' not in properties[0]: # if the model has already been computed, get the matches from its geometric matches
         svg_file = properties[0].replace("/sfm_data.json", "/matches/GeometricAdjacencyMatrix.svg")
         for line in open(svg_file, 'r').read().split('\n'):
             if "<rect" in line:
@@ -188,7 +181,8 @@ for model, properties in dict_properties.items():
                 # avoid Nulls in the list of matches
                 if general_dict.get(filename_y) is not None:
                     if general_dict.get(filename_x) is not None:
-                        matches.append([general_dict.get(filename_y), general_dict.get(filename_x), labels_idx])
+                        if general_dict.get(filename_x) is not general_dict.get(filename_y):
+                            matches.append([general_dict.get(filename_y), general_dict.get(filename_x), labels_idx])
                     
     else:
         for i in range(len(filenames)-1):
@@ -197,7 +191,8 @@ for model, properties in dict_properties.items():
                 filename_y = filenames[j]
                 if general_dict.get(filename_y) is not None:
                     if general_dict.get(filename_x) is not None:
-                        matches.append([general_dict.get(filename_x), general_dict.get(filename_y), labels_idx])
+                        if general_dict.get(filename_x) is not general_dict.get(filename_y):
+                            matches.append([general_dict.get(filename_x), general_dict.get(filename_y), labels_idx])
 
     labels_idx += 1
     labels.append(model)
@@ -247,5 +242,5 @@ cbar = plt.colorbar(ticks=range(len(labels)))
 cbar.ax.set_yticklabels(labels, fontsize=18)
 plt.xticks(np.arange(0, dim, step=50))
 
-plt.savefig(path_listing_out + '/matches.png', bbox_inches='tight', dpi = 400)
+plt.savefig(path_listing_out + '/groups/matches.png', bbox_inches='tight', dpi = 400)
 
