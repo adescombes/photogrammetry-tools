@@ -27,9 +27,9 @@
     SFM_TMPDR="/tmp/sfm-$(echo $0-$SFM_PIPEV | sha256sum | cut -c-16)"
     SFM_CMDBK="$0 $@"
     SFM_MOUNT="/media/gargantua/1000-plane/0000-sfm"
-    SFM_LISTING="/media/gargantua/0500-plane/0000-image"
     SFM_MODEL="$(date +"%Y%m%d-%H%M%S")"
     SFM_COORD="$(grep -c ^processor /proc/cpuinfo)"
+#    SFM_IMAGE=""
     SFM_SCALE=""
     SFM_CHAIN="incremental"
     SFM_FOCAL=""
@@ -40,8 +40,11 @@
     SFM_POINT="SIFT"
     SFM_FORCE="NORMAL"
     SFM_MATCH="f"
+    SFM_PFILE=""
     SFM_PAIRS=""
-    SFM_GROUPS="" # txt file with list of individual parts that will be merged
+	SFM_GROUPS="" # txt file with list of individual parts that will be merged
+    SFM_DEPTH="20"
+    SFM_CYCLE="1"
     SFM_ACCEP="tiff tif jpg jpeg png bmp"
     SFM_MESHE=""
 
@@ -69,6 +72,9 @@
                 --thread|-t)
                     SFM_COORD="$1"
                 shift ;;
+#                --image)
+#                    SFM_IMAGE="$1"
+#                shift ;;
                 --scale)
                     SFM_SCALE="$1"
                 shift ;;
@@ -99,8 +105,20 @@
                 --matches-mode)
                     SFM_MATCH="$1"
                 shift ;;
-                --groups)
-                    SFM_GROUPS="$1"
+                --pairs-file)
+                    SFM_PFILE="$1"
+                shift ;;
+                --pairs-mode)
+                    SFM_PAIRS="$1"
+                shift ;;
+				--groups)
+					SFM_GROUPS="$1"
+				shift ;;
+                --pairs-depth)
+                    SFM_DEPTH="$1"
+                shift ;;
+                --pairs-cycle)
+                    SFM_CYCLE="$1"
                 shift ;;
                 --mesh-pipeline)
                     SFM_MESHE="$1"
@@ -209,33 +227,11 @@
         # create temporary directory #
         tmp create
 
-        # enumerating source directories : the group file should contain the folders' names of models to include, one name by line, preceded by *computed * if the model exists in 1000-plane/0000-sfm/ #00
+        # enumerating source directories #
 
-
-        while read -r line
-        do
-	        num=$(echo $line | awk -F " " '{print NF-1}')
-	        if [ $num -eq 1 ]; then
-              # the line contains one space if the model is already computed thus exists in 1000-plane/0000-sfm
-                folder=$(awk '{split($0, a); print a[2]}' <<< "$line")
-    
-                images_folder=$SFM_LISTING/${folder:16:4}/${folder:20:4}/${folder:16}
-            else
-              # the line does not contain any space, the model only refers to a folder of symlinks to images in 0500-plane/0000-image
-                if [ $num -eq 0 ]; then
-
-                    images_folder=$SFM_LISTING/${line:0:4}/${line:4:4}/$line
-
-                else
-          		    exe "echo 'wrong syntax in group file'"
-                    exit 1
-                 
-                fi
-            fi
-
-	        [ -z "$(ls $images_folder/*)" ] && echo "ramanujan : empty directory"
-
-		    for SFM_ELEMENT in $images_folder/*; do
+		while read -r file
+		do 	
+		    for SFM_ELEMENT in $SFM_MOUNT/${file:0:4}/${file:4:4}/$file/images/*; do
 
 		        # element analysis #
 		        SFM_BASE=$(basename $SFM_ELEMENT)
@@ -247,7 +243,8 @@
 		            exe "rsync -L $SFM_ELEMENT $SFM_TMPDR/$SFM_BASE"
 
 		            # convert element to tiff #
-		            exe "convert $SFM_TMPDR/$SFM_BASE +compress $SFM_SCALE $SFM_TMPDR/${SFM_BASE%.*}.tif"
+		            #exe "convert $SFM_TMPDR/$SFM_BASE +compress $SFM_SCALE $SFM_TMPDR/${SFM_BASE%.*}.tif"
+					exe "convert -thumbnail 100x100! $SFM_TMPDR/$SFM_BASE +compress $SFM_SCALE $SFM_TMPDR/${SFM_BASE%.*}.tif"
 
 		            # copy to image directory - tiff i/o extremely slow over nfs #
 		            exe "rsync $SFM_TMPDR/${SFM_BASE%.*}.tif $SFM_ROOT/$SFM_MODEL/images/"
@@ -294,25 +291,28 @@
 
     # image injection #
     image
+#	exe "mkdir $SFM_ROOT/$SFM_NAME/images; cp /media/gargantua/1000-plane/0000-sfm/2020/0106/20200106-122254-20200106-00001-italy-venice-san_barnaba-0001-test3/images/* $SFM_ROOT/$SFM_NAME/images/"
 
     # initialise structure #
     exe "sfm-initialise --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD $SFM_FOCAL --initialise-radial $SFM_RADIA"
 
-    # create a sub-directory to store all the files needed temporarily
-    exe "mkdir $SFM_ROOT/$SFM_NAME/systems/groups"
+    # check putative model - compute putative matches #
+    [ "$SFM_PAIRS" != "" ] && exe "sfm-tool-pairs --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --pairs-mode $SFM_PAIRS --pairs-depth $SFM_DEPTH --pairs-cycle $SFM_CYCLE"
 
-    # copy the file containing information on the groups 
-    exe "cp $SFM_GROUPS $SFM_ROOT/$SFM_NAME/systems/groups/groups.txt"
+    # check putative file - import putative matches #
+    [ "$SFM_PFILE" != "" ] && exe "cp $SFM_PFILE $SFM_ROOT/$SFM_NAME/systems/omvg/pair_list.txt"
 
     # compute features #
     exe "sfm-features --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --features-mode $SFM_POINT --features-preset $SFM_FORCE"
 
-    # create pair file #
-    SFM_PFILE=$SFM_ROOT/$SFM_NAME/systems/omvg/pair_list.txt
-    python make-triplets.py $SFM_MOUNT $SFM_LISTING $SFM_MODEL $SFM_GROUPS $SFM_PFILE
+    # check pair file #
+#    [ -n "$SFM_PFILE" ] && SFM_PFILE="--matches-pair $SFM_PFILE"
+    SFM_PFILE="$SFM_ROOT/$SFM_NAME/systems/matches-pair.txt" # là je donne juste le nom (et endroit) où il faut créer le fichier de matches
+	python /home/descombe/Desktop/photogrammetry-tools/triplets/triplets-dev.py $SFM_NAME $SFM_MOUNT $SFM_GROUPS $SFM_PFILE # il est en input au script python mais c'est juste pour indiquer l'endroit où remplir les matches
 
-    # compute matches #
-    exe "sfm-matches --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --matches-mode $SFM_MATCH --matches-pair $SFM_PFILE" 
+    exe touch $SFM_ROOT/$SFM_NAME/systems/omvg/matches/brigitte.txt
+	# compute matches #
+    exe "sfm-matches --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --matches-mode $SFM_MATCH --matches-pair $SFM_PFILE" # et là je l'utilise effectivement
 
     # bundle adjustment #
     exe "sfm-optimisation --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --optimisation-pipeline $SFM_CHAIN"
