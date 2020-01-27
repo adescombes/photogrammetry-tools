@@ -1,0 +1,15 @@
+computed 20191023-095902-20191023-00002-italy-venice-san_barbaba-0001-calle_de_le_pazienze
+20191217-00001-italy-venice-santa_margherita-0001-calle_de_la_pazienze
+computed 20191218-201659-20191217-00001-italy-venice-santa_margherita-0001-calle_de_la_scuola
+computed 20191218-152637-20191217-00001-italy-venice-santa_margherita-0001-campo_dei_carmini
+computed 20191219-164731-20191218-00003-italy-venice-santa_margherita-0001-campo_santa_margherita
+20191217-00001-italy-venice-santa_margherita-0001-calle_e_ponte_del_forno
+computed 20191219-142108-20191218-00002-italy-venice-santa_margherita-0001-calle_del_forno
+computed 20191218-173621-20191217-00001-italy-venice-santa_margherita-0001-rio_tera_canal
+20191217-00001-italy-venice-santa_margherita-0001-calle_de_mezzo_de_la_vida
+computed 20191218-191129-20191217-00001-italy-venice-santa_margherita-0001-campiello_cappello
+20191217-00001-italy-venice-santa_margherita-0001-ramo_secondo_cappello
+20191217-00001-italy-venice-santa_margherita-0001-calle_de_l_aseo
+20191217-00001-italy-venice-santa_margherita-0001-calle_del_magazen
+20191217-00001-italy-venice-santa_margherita-0001-calle_del_cafetier
+20191217-00001-italy-venice-santa_margherita-0001-calle_renier
