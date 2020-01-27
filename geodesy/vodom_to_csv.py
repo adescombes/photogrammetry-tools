@@ -15,16 +15,16 @@ import sys
 sys.path.append('../share')
 from least_squares_matching import least_squares_matching
 
-path = sys.argv[1] 
+model = sys.argv[1] 
 epsg = sys.argv[2]
-version = path.split('/')[-1]
-coor_model_file = path + "/geodesy/points_model"
-coor_cadastre_file = path + "/geodesy/points_cadastre_epsg"+epsg
+path = '/media/gargantua/1000-plane/0000-sfm/'
+coor_model_file = path + model[0:4] + "/" + model[4:8] + "/" + model + "/geodesy/points_model"
+coor_cadastre_file = path + model[0:4] + "/" + model[4:8] + "/" + model + "/geodesy/points_cadastre_epsg" + epsg
 
 
-sfm_data_path = path + "/systems/omvg/sfm_data.json"
+sfm_data_model = path + model[0:4] + "/" + model[4:8] + "/" + model + "/systems/omvg/sfm_data.json"
 
-with open(sfm_data_path) as sfm_data:
+with open(sfm_data_model) as sfm_data:
     data = json.load(sfm_data)
     views = data['views']
     extrinsics = data['extrinsics']
@@ -55,8 +55,8 @@ for key, camera_pose in key_to_pose_dict.items():
 for key, coor in key_to_pose_dict.items():
     file = key_to_file_dict.get(key)
 
-csv_path = path + "/geodesy/" + version + "-epsg" + epsg + ".csv"
-with open(csv_path, 'w') as f_out:
+csv_model = path + model[0:4] + "/" + model[4:8] + "/" + model + "/geodesy/" + model + "-epsg" + epsg + ".csv"
+with open(csv_model, 'w') as f_out:
     f_out.write('X,Y,filename\n')
     for key, camera_pose in key_to_pose_dict.items():
         x,y,_ = camera_pose

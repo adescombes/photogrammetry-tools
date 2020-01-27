@@ -14,20 +14,13 @@ SFM_MODEL = sys.argv[3]
 SFM_GROUPS = sys.argv[4]
 SFM_PFILE = sys.argv[5]
 
-with open("/home/descombe/triplets/test.txt","w") as f1:
-    f1.write("SFM_MOUNT " + SFM_MOUNT)
-    f1.write("\nSFM_LISTING " + SFM_LISTING)
-    f1.write("\nSFM_MODEL " + SFM_MODEL)
-    f1.write("\nSFM_GROUPS " + SFM_GROUPS)
-    f1.write("\nSFM_PFILE " + SFM_PFILE)
-f1.close()
-
 dict_links = {}
 dict_properties = {}
 dict_connections = {}
 
-for model in open(SFM_GROUPS, 'r').read().split('\n'):
-    if model is not '': # avoid empty strings
+for line in open(SFM_GROUPS, 'r').read().split('\n'):
+    if line is not '': # avoid empty strings
+        model = line.split()[-1]
         model_name = model.split('-')[-1]
         # list to store the properties of each model : 
         # 1. the path to its sfm_data.json file, to get the images it is composed of 

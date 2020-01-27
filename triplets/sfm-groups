@@ -42,9 +42,6 @@
     SFM_MATCH="f"
     SFM_PAIRS=""
     SFM_GROUPS="" # txt file with list of individual parts that will be merged
-    SFM_PFILE=""
-    SFM_DEPTH="20"
-    SFM_CYCLE="1"
     SFM_ACCEP="tiff tif jpg jpeg png bmp"
     SFM_MESHE=""
 
@@ -102,20 +99,8 @@
                 --matches-mode)
                     SFM_MATCH="$1"
                 shift ;;
-                --pairs-mode)
-                    SFM_PAIRS="$1"
-                shift ;;
                 --groups)
                     SFM_GROUPS="$1"
-                shift ;;
-                --pairs-file)
-                    SFM_PFILE="$1"
-                shift ;;
-                --pairs-depth)
-                    SFM_DEPTH="$1"
-                shift ;;
-                --pairs-cycle)
-                    SFM_CYCLE="$1"
                 shift ;;
                 --mesh-pipeline)
                     SFM_MESHE="$1"
@@ -224,28 +209,31 @@
         # create temporary directory #
         tmp create
 
-        # enumerating source directories #
-      
+        # enumerating source directories : the group file should contain the folders' names of models to include, one name by line, preceded by *computed * if the model exists in 1000-plane/0000-sfm/ #00
+
+
         while read -r line
         do
-            num=$(echo $line | awk -F- '{print NF-1}') # number of occurences of "-" in the folder's name
-            
-            # if there are 8 occurences, take only the part after the 2 first occurences of "-"            
-            if [ $num -eq 8 ]; then
-
-                images_folder=$SFM_LISTING/${line:16:4}/${line:20:4}/${line:16}
-            
+	        num=$(echo $line | awk -F " " '{print NF-1}')
+	        if [ $num -eq 1 ]; then
+              # the line contains one space if the model is already computed thus exists in 1000-plane/0000-sfm
+                folder=$(awk '{split($0, a); print a[2]}' <<< "$line")
+    
+                images_folder=$SFM_LISTING/${folder:16:4}/${folder:20:4}/${folder:16}
             else
-                if [ $num -eq 6 ]; then
+              # the line does not contain any space, the model only refers to a folder of symlinks to images in 0500-plane/0000-image
+                if [ $num -eq 0 ]; then
 
                     images_folder=$SFM_LISTING/${line:0:4}/${line:4:4}/$line
-                
+
                 else
-            
+          		    exe "echo 'wrong syntax in group file'"
                     exit 1
                  
                 fi
             fi
+
+	        [ -z "$(ls $images_folder/*)" ] && echo "ramanujan : empty directory"
 
 		    for SFM_ELEMENT in $images_folder/*; do
 
@@ -303,47 +291,35 @@
 
     # initialise logs #
     SFM_LOGS=$SFM_ROOT/$SFM_NAME/systems/pipe-$SFM_PIPEV-logs
-    exe "echo 'roger'"
 
     # image injection #
     image
-    exe "echo 'francoise'"
 
     # initialise structure #
     exe "sfm-initialise --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD $SFM_FOCAL --initialise-radial $SFM_RADIA"
-    exe "echo 'henri'"
 
     # create a sub-directory to store all the files needed temporarily
     exe "mkdir $SFM_ROOT/$SFM_NAME/systems/groups"
-    exe "echo 'claude'"
 
     # copy the file containing information on the groups 
     exe "cp $SFM_GROUPS $SFM_ROOT/$SFM_NAME/systems/groups/groups.txt"
-    exe "echo 'benoit'"
 
     # compute features #
     exe "sfm-features --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --features-mode $SFM_POINT --features-preset $SFM_FORCE"
-    exe "echo 'catherine'"
- 
+
     # create pair file #
-    $SFM_PFILE=$SFM_ROOT/$SFM_NAME/systems/omvg/pair_list.txt
-    exe "echo '$SFM_PFILE'"
-    python make-triplets-v2.py $SFM_MOUNT $SFM_LISTING $SFM_MODEL $SFM_GROUPS $SFM_PFILE
-    exe "echo 'yoann'"
+    SFM_PFILE=$SFM_ROOT/$SFM_NAME/systems/omvg/pair_list.txt
+    python make-triplets.py $SFM_MOUNT $SFM_LISTING $SFM_MODEL $SFM_GROUPS $SFM_PFILE
 
-	# compute matches #
-#    exe "sfm-matches --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --matches-mode $SFM_MATCH --matches-pair $SFM_PFILE" 
-    exe "sfm-matches --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --matches-mode $SFM_MATCH" 
-
-    exe "echo 'patrick'"
+    # compute matches #
+    exe "sfm-matches --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --matches-mode $SFM_MATCH --matches-pair $SFM_PFILE" 
 
     # bundle adjustment #
     exe "sfm-optimisation --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --optimisation-pipeline $SFM_CHAIN"
-    exe "echo 'isa'"
 
     # densification #
     exe "sfm-densify --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --densify-pipeline $SFM_DENSE --densify-preset $SFM_DENSP --densify-scale $SFM_RESOL"
-    exe "echo 'frank'"
+
     # meshing #
     exe "sfm-mesh --mount $SFM_MOUNT --sfm $SFM_MODEL --thread $SFM_COORD --mesh-pipeline $SFM_MESHE"
 
