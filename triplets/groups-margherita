@@ -1,0 +1,2 @@
+#!/bin/bash
+./sfm-groups --suffix 20200120-00001-italy-venice-santa_margherita-0001-santa_margherita --groups 20200120-00001-italy-venice-santa_margherita-0001-santa_margherita/groups.txt --focal 3387.7 --scale 50 --features-preset HIGH --dpipe none

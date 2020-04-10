@@ -12,7 +12,7 @@ import numpy as np
 
 path = sys.argv[1] # full path to .csv file
 
-wkt = pd.read_csv(path, header=0)
+wkt = pd.read_csv(path, header=0, usecols = ['WKT'])
 
 if 'POINT' in wkt['WKT'][0]:
     geometry = wkt['WKT'].apply(lambda x : x.replace('POINT ', '').replace('(', '').replace(')', '').strip())
@@ -45,4 +45,4 @@ with open(path_out, 'w') as file:
     for line in header:
         file.write("%s\n" % line)
     for pt in pt_list:
-        file.write("%s %d 0 255 0\n" % (pt, z)) 
+        file.write("%s %d 126 126 126\n" % (pt, z)) 

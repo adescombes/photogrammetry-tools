@@ -1,0 +1,2 @@
+#!/bin/bash
+./sfm-groups --suffix 20190912-00001-italy-venice-isola_san_giorgio-0001-cini_cloistres --groups 20190912-00001-italy-venice-isola_san_giorgio-0001-cini_cloistres/groups.txt --focal 3387.7 --features-preset HIGH --densify-scale 8
