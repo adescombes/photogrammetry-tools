@@ -51,9 +51,3 @@ ax.set_zlabel('Z Label')
 
 plt.show()
 fig.savefig('figures/%s.png' % '-'.join([model[0:8],model.split('-')[-2],model.split('-')[-1]]), dpi = 150)
-
-
-
-
-
-

@@ -2,15 +2,19 @@
 This program can be used to transform a georeferenced polygon or set of points (i.e. cadastre map) into a 2D cloud point.
 The goal is to display it at the same time as a georeferenced 3D cloud of points and check the presicion of 
 the positionning of the latter.
-IN : CSV file containing the geographical coordinates in WKT (well-known text format, commonly used in QGIS exports)
+IN : CSV file containing the geographical coordinates in WKT (well-known-text format, commonly used in QGIS exports)
 OUT : PLY file (can be opened with Meshlab or CloudCompare). The height (z-coordinate) of the points is arbitrarily set to 0.
 """
 
-import sys
+import click
 import pandas as pd
 import numpy as np
 
-path = sys.argv[1] # full path to .csv file
+
+@click.command()
+@click.option('--path', help='path to the file in well-known-text format')
+@click.option('--z', default=0, help='altitude to display in the 3D model. The same height will be assigned to all points')
+
 
 wkt = pd.read_csv(path, header=0, usecols = ['WKT'])
 
@@ -37,8 +41,6 @@ header = ['ply',
  'property uchar green',
  'property uchar blue',
  'end_header']
-
-z = 0 # can be modified but the same height will be assigned to all points
 
 path_out = path.replace('.csv', '.ply')
 with open(path_out, 'w') as file:

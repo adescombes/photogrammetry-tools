@@ -11,23 +11,28 @@ import numpy as np
 import json
 import sys
 import struct
+import click
 
 sys.path.append('../share')
 from least_squares_matching import least_squares_matching
 
-file_in = sys.argv[1] # full path to file
-version = '/'.join(file_in.split('/')[:-1])
-format = file_in.split('.')[-1]
-epsg = sys.argv[2]
-coor_model_file = version + '/geodesy/points_model'
-coor_cadastre_file = version + '/geodesy/points_cadastre_epsg' + epsg
+@click.command()
+@click.option('--file', help='path to ply (ascii) or uv3 (binary) format')
+@click.option('--source', help='List of selected points on the source point cloud')
+@click.option('--target', help='List of selected points on the target point cloud')
+@click.option('--epsg', default=None, help='SRID of the spatial coordinate system of the target point cloud')
 
-F,R,t = least_squares_matching(coor_model_file,coor_cadastre_file)
+file_format = file.split('.')[-1]
 
-file_out = file_in.replace('.', '-epsg%s.' % epsg)
+F,R,t = least_squares_matching(source,target)
 
-if format == 'ply': # ply ascii format
-    f_in = open(file_in, 'r').readlines()
+if epsg is not None: # the transformation is a geolocalisation
+    file_out = file.replace('.', '-epsg%s.' % epsg)
+else: # the transformation is for point cloud matching
+    file_out = file.replace('.', '-matched.')
+    
+if file_format == 'ply': # ply ASCII format
+    f_in = open(file, 'r').readlines()
     pt_idx = f_in.index('end_header\n')
     points = f_in[pt_idx+1:]
 
@@ -40,8 +45,8 @@ if format == 'ply': # ply ascii format
             coors = np.array(np.matmul(np.transpose(R), np.subtract(F * np.array(camera_pose), t)), dtype=np.float64)
             f_out.write(str(coors[0]) + " " + str(coors[1]) + " " + str(coors[2]) + " " + colors + "\n")
 
-elif format == 'uv3': # uv3 binary format
-    with open(file_in, 'rb') as f_in:
+elif file_format == 'uv3': # uv3 binary format
+    with open(file, 'rb') as f_in:
         with open(file_out, 'wb') as f_out:
             while True:
                 byte = f_in.read(28)
