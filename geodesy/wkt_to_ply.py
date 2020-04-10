@@ -16,35 +16,39 @@ import numpy as np
 @click.option('--z', default=0, help='altitude to display in the 3D model. The same height will be assigned to all points')
 
 
-wkt = pd.read_csv(path, header=0, usecols = ['WKT'])
+def wkt_to_ply(path, z):
+    wkt = pd.read_csv(path, header=0, usecols = ['WKT'])
 
-if 'POINT' in wkt['WKT'][0]:
-    geometry = wkt['WKT'].apply(lambda x : x.replace('POINT ', '').replace('(', '').replace(')', '').strip())
-elif 'POLYGON' in wkt['WKT'][0]:
-    geometry = wkt['WKT'].apply(lambda x : x.replace('POLYGON ', '').replace('(', '').replace(')', '').strip())
+    if 'POINT' in wkt['WKT'][0]:
+        geometry = wkt['WKT'].apply(lambda x : x.replace('POINT ', '').replace('(', '').replace(')', '').strip())
+    elif 'POLYGON' in wkt['WKT'][0]:
+        geometry = wkt['WKT'].apply(lambda x : x.replace('POLYGON ', '').replace('(', '').replace(')', '').strip())
 
-pt_list = []
-for coors in geometry:
-    for coor in coors.split(','):
-        x = np.float(coor.split()[0])
-        y = np.float(coor.split()[1])
-        
-        pt_list.append(str(x) +" "+str(y))
-        
-header = ['ply',
- 'format ascii 1.0',
- 'element vertex %s' % len(pt_list),
- 'property double x',
- 'property double y',
- 'property double z',
- 'property uchar red',
- 'property uchar green',
- 'property uchar blue',
- 'end_header']
+    pt_list = []
+    for coors in geometry:
+        for coor in coors.split(','):
+            x = np.float(coor.split()[0])
+            y = np.float(coor.split()[1])
 
-path_out = path.replace('.csv', '.ply')
-with open(path_out, 'w') as file:
-    for line in header:
-        file.write("%s\n" % line)
-    for pt in pt_list:
-        file.write("%s %d 126 126 126\n" % (pt, z)) 
+            pt_list.append(str(x) +" "+str(y))
+
+    header = ['ply',
+     'format ascii 1.0',
+     'element vertex %s' % len(pt_list),
+     'property double x',
+     'property double y',
+     'property double z',
+     'property uchar red',
+     'property uchar green',
+     'property uchar blue',
+     'end_header']
+
+    path_out = path.replace('.csv', '.ply')
+    with open(path_out, 'w') as file:
+        for line in header:
+            file.write("%s\n" % line)
+        for pt in pt_list:
+            file.write("%s %d 126 126 126\n" % (pt, z)) 
+            
+if __name__ == '__main__':
+    wkt_to_ply()
