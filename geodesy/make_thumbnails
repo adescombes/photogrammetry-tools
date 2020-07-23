@@ -1,7 +1,0 @@
-mkdir $1/../thumbnails
-for file in $1/*.$2
-do
-    name=${file##*/}
-    base=${name%.$2}
-    convert $file -thumbnail 300x300^ $1/../thumbnails/$base.jpg
-done
