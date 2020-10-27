@@ -2,6 +2,40 @@ from utils import read_ascii_ply, write_bin_ply, read_uv3, write_uv3
 import numpy as np
 import click
 import re
+import sys
+
+# from https://stackoverflow.com/questions/42352622/finding-points-within-a-bounding-box-with-numpy
+def bounding_box(points, min_x, min_y, min_z, max_x, max_y, max_z):
+    """ Compute a bounding_box filter on the given points
+
+    Parameters
+    ----------                        
+    points: (n,3) array
+        The array containing all the points's coordinates. Expected format:
+            array([
+                [x1,y1,z1],
+                ...,
+                [xn,yn,zn]])
+
+    min_i, max_i: float
+        The bounding box limits for each coordinate. If some limits are missing,
+        the default values are -infinite for the min_i and infinite for the max_i.
+
+    Returns
+    -------
+    bb_filter : boolean array
+        The boolean mask indicating wherever a point should be keeped or not.
+        The size of the boolean mask will be the same as the number of given points.
+
+    """
+
+    bound_x = np.logical_and(points[:, 0] > min_x, points[:, 0] < max_x)
+    bound_y = np.logical_and(points[:, 1] > min_y, points[:, 1] < max_y)
+    bound_z = np.logical_and(points[:, 2] > min_z, points[:, 2] < max_z)
+
+    bb_filter = np.logical_and(np.logical_and(bound_x, bound_y), bound_z)
+
+    return bb_filter
 
 @click.command()
 @click.option('--model', help='path to the model to be cropped, in uv3 format')
@@ -10,8 +44,8 @@ def crop(model, bounding_box):
 
     if model.split('.')[-1] is not 'uv3':
         print('The model must be converted to uv3 to be cropped\n%s' % model)
-        break
-
+        sys.exit()
+        
     points_xyz, points_rgb = read_uv3(model)
 
     lines = open(bounding_box, 'r').readlines()
@@ -33,49 +67,25 @@ def crop(model, bounding_box):
     max_y = bb_center_y + 0.5 * bb_dim_y
     max_z = bb_center_z + 0.5 * bb_dim_z
 
-    # from https://stackoverflow.com/questions/42352622/finding-points-within-a-bounding-box-with-numpy
-    def bounding_box(points, min_x, min_y, min_z, max_x, max_y, max_z):
-        """ Compute a bounding_box filter on the given points
-
-        Parameters
-        ----------                        
-        points: (n,3) array
-            The array containing all the points's coordinates. Expected format:
-                array([
-                    [x1,y1,z1],
-                    ...,
-                    [xn,yn,zn]])
-
-        min_i, max_i: float
-            The bounding box limits for each coordinate. If some limits are missing,
-            the default values are -infinite for the min_i and infinite for the max_i.
-
-        Returns
-        -------
-        bb_filter : boolean array
-            The boolean mask indicating wherever a point should be keeped or not.
-            The size of the boolean mask will be the same as the number of given points.
-
-        """
-
-        bound_x = np.logical_and(points[:, 0] > min_x, points[:, 0] < max_x)
-        bound_y = np.logical_and(points[:, 1] > min_y, points[:, 1] < max_y)
-        bound_z = np.logical_and(points[:, 2] > min_z, points[:, 2] < max_z)
-
-        bb_filter = np.logical_and(np.logical_and(bound_x, bound_y), bound_z)
-
-        return bb_filter
-
-    print('-- selecting points... --')
-    inside_box = bounding_box(points_xyz, min_x, min_y, min_z, max_x, max_y, max_z)
-
-    points_inside_box = points_xyz[inside_box]
-    rgb_inside_box = points_rgb[inside_box]
 
     file_out = model.replace('.uv3','-cropped.uv3')
 
     print('-- writing to file... --\n%s' % file_out)
-    write_uv3(points_inside_box, rgb_inside_box, file_out)
+    
+    with open(model, 'rb') as f_in:
+        with open(file_out, 'wb') as f_out:
+
+            while True:
+                byte = f_in.read(28)
+                if not byte:
+                    break
+                x,y,z,t,r,g,b = struct.unpack('<dddBBBB', byte)
+                points_xyz = np.array([x,y,z])
+                if bounding_box_filter(points_xyz, min_x, min_y, min_z, max_x, max_y, max_z):
+                    export = struct.pack('<dddBBBB', x,y,z,1,r,g,b)
+                    f_out.write(export)
+        f_out.close()
+    f_in.close()
     
 if __name__ == '__main__':
     crop()
