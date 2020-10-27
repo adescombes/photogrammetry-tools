@@ -42,7 +42,7 @@ def bounding_box(points, min_x, min_y, min_z, max_x, max_y, max_z):
 @click.option('--bounding_box', help='path to the file containing the bounding box dimensions and center coordinates')
 def crop(model, bounding_box):
 
-    if model.split('.')[-1] is not 'uv3':
+    if model.split('.')[-1] != 'uv3':
         print('The model must be converted to uv3 to be cropped\n%s' % model)
         sys.exit()
         
