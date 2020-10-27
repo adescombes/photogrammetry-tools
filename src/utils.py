@@ -130,15 +130,15 @@ def write_ascii_ply(xyz_transf: list,
                 f.write(str(color) + " ")
             f.write('\n')
             
-def write_bin_ply(xyz_transf, points_rgb, file_path_out):
-    header = make_header(len(points_xyz, 'bin'))
+def write_bin_ply(points_xyz, points_rgb, file_path_out):
+    header = make_header(len(points_xyz), 'bin')
     
     with open(file_path_out, 'wb') as f:
         f.write(header.encode('ascii'))
         
-        for i in range(len(xyz_transf)):
+        for i in range(len(points_xyz)):
             #xyz_transf = np.array(np.matmul(np.transpose(R), np.subtract(F * np.array(points_xyz[i]), t)), dtype=np.float64)
-            export = struct.pack('<dddBBB',xyz_transf[0], xyz_transf[1], xyz_transf[2], points_rgb[i][0], points_rgb[i][1], points_rgb[i][2])
+            export = struct.pack('<dddBBB',points_xyz[i][0], points_xyz[i][1], points_xyz[i][2], points_rgb[i][0], points_rgb[i][1], points_rgb[i][2])
             f.write(export)
             
 def write_uv3(xyz_transf, points_rgb, file_path_out):
