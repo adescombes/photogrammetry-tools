@@ -167,13 +167,13 @@ def write_csv_from_dict(views_dict, extrinsics_dict, file_path_out, F, R, t):
     only exports the camera poses, for georeferencing purposes
     """ 
     with open(file_path_out, 'w') as f_out:
-        f_out.write('X,Y,filename\n')
+        f_out.write('X,Y,Z,filename\n')
         for key, value in views_dict.items():
             if extrinsics_dict.get(key) is not None: # otherwise the image has not been used
                 filename = value['ptr_wrapper']['data']['filename']
                 coors = np.array(extrinsics_dict.get(key)['center'])
                 coors_transf = np.array(np.matmul(np.transpose(R), np.subtract(F * np.array(coors), t)), dtype=np.float64)
-                f_out.write('%f,%f,%s\n' %(coors_transf[0], coors_transf[1], filename))
+                f_out.write('%f,%f,%f,%s\n' %(coors_transf[0], coors_transf[1], coors_transf[2], filename))
 
         
 """--- Read SfM data ---"""
