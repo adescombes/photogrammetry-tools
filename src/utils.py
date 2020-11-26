@@ -49,8 +49,8 @@ def least_squares_matching(file_in):
 
     # Rotation matrix
     R = np.matmul(np.transpose(V), np.transpose(U))
-    if np.linalg.det(R) < 0:
-        R[2,:] *= -1
+    #if np.linalg.det(R) < 0:
+    #    R[2,:] *= -1
 
     # translation
     t = np.subtract( centroid_source, np.matmul( R, centroid_target ))
