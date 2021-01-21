@@ -65,7 +65,7 @@ def make_header(nb_points: int, file_format:str):
     if file_format is "binary" or "bin":
         file_format = "binary_little_endian"
 
-    header = 'ply\nformat %s 1.0\nelement vertex %d\nproperty float64 x\nproperty float64 y\nproperty float64 z\nproperty uint8 red\nproperty uint8 green\nproperty uint8 blue\nend_header\n' %(file_format, nb_points)
+    header = 'ply\nformat %s 1.0\nelement vertex %d\nproperty float64 x\nproperty float64 y\nproperty float64 z\nproperty uchar red\nproperty uchar green\nproperty uchar blue\nend_header\n' %(file_format, nb_points)
     
     return header
 
@@ -119,6 +119,7 @@ def read_uv3(file_path_in: str):
 def write_ascii_ply(xyz_transf: list, 
                     points_rgb: list, 
                     file_path_out: str):
+    header = make_header(len(xyz_transf), 'ascii')
     with open(file_path_out, 'w') as f:
         for line in header:
             f.write("%s" % line)
