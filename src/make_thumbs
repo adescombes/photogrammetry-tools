@@ -1,0 +1,13 @@
+#!/bin/bash
+SRC=$1
+DST=$2
+FORMAT_SRC=$3
+
+mkdir $DST
+
+for f in $SRC/*.$FORMAT_SRC;
+    do name1=${f%*.$FORMAT_SRC};
+    name=${name1##*/};
+    echo $name;
+    convert $f -thumbnail ^300x300 $DST/$name.jpg;
+    done
