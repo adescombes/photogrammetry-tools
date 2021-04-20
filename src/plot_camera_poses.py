@@ -4,15 +4,16 @@ import numpy as np
 import sys
 from mpl_toolkits.mplot3d import Axes3D 
 import matplotlib.pyplot as plt
-from utils import least_squares_matching, 
+from utils import least_squares_matching
 
 plt.rcParams["figure.figsize"] = (12, 9)
 plt.rcParams["figure.constrained_layout.use"] = True
 
 
-model = sys.argv[1]  # in : name of the folder
-sfm_data_path = "/media/gargantua/1000-plane/0000-sfm/" + model[0:4] + "/" + model[4:8] + "/" + model + "/systems/omvg/sfm_data.json"
+sfm_data_path = sys.argv[1]  # in : name of the folder
 
+model = sfm_data_path.split('/')[7]
+print(model)
 with open(sfm_data_path) as sfm_data:
     data = json.load(sfm_data)
     views = data['views']
@@ -51,4 +52,4 @@ ax.set_ylabel('Y Label')
 ax.set_zlabel('Z Label')
 
 plt.show()
-fig.savefig('figures/%s.png' % '-'.join([model[0:8],model.split('-')[-2],model.split('-')[-1]]), dpi = 150)
+fig.savefig('../figures/%s.png' % '-'.join([model[0:8],model.split('-')[-2],model.split('-')[-1]]), dpi = 150)
