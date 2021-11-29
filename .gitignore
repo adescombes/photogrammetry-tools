@@ -2,7 +2,8 @@
 *.txt
 *.dat
 *.json
-*.ipynb
 *.ipynb_checkpoints
 */__pycache__/*
 */.ipynb_checkpoints/*
+.DS_Store
+src/.DS_Store
